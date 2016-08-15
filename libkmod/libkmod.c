@@ -206,7 +206,10 @@ static int log_priority(const char *priority)
 	return 0;
 }
 
-static const char *dirname_default_prefix = "/lib/modules";
+static const char *dirname_default_prefixes[] = {
+	"/lib/modules",
+	NULL
+};
 
 static char *get_kernel_release(const char *dirname)
 {
@@ -219,11 +222,43 @@ static char *get_kernel_release(const char *dirname)
 	if (uname(&u) < 0)
 		return NULL;
 
-	if ((dirname_prefix = getenv("MODULE_DIR")) == NULL)
-		dirname_prefix = dirname_default_prefix;
+	if ((dirname_prefix = getenv("MODULE_DIR")) != NULL) {
+		if(asprintf(&p, "%s/%s", dirname_prefix, u.release) < 0)
+			return NULL;
+	} else {
+		size_t i;
+		char buf[PATH_MAX];
 
-	if (asprintf(&p, "%s/%s", dirname_prefix, u.release) < 0)
-		return NULL;
+		for (i = 0; dirname_default_prefixes[i] != NULL; i++) {
+			int plen;
+
+			plen = snprintf(buf, sizeof(buf), "%s/%s", dirname_default_prefixes[i], u.release);
+			if (plen < 0)
+				return NULL;
+			else if (plen >= PATH_MAX)
+				continue;
+
+			if (dirname_default_prefixes[i + 1] != NULL) {
+				struct stat dirstat;
+
+				if (stat(buf, &dirstat) < 0) {
+					if (errno == ENOENT)
+						continue;
+					else
+						return NULL;
+				}
+
+				if (!S_ISDIR(dirstat.st_mode))
+					continue;
+			}
+
+			p = malloc(plen + 1);
+			if (p == NULL)
+				return NULL;
+			memcpy(p, buf, plen + 1);
+			break;
+		}
+	}
 
 	return p;
 }
