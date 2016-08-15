@@ -211,7 +211,7 @@ static const char *dirname_default_prefix = "/lib/modules";
 static char *get_kernel_release(const char *dirname)
 {
 	struct utsname u;
-	char *p;
+	char *p, *dirname_prefix;
 
 	if (dirname != NULL)
 		return path_make_absolute_cwd(dirname);
@@ -219,7 +219,10 @@ static char *get_kernel_release(const char *dirname)
 	if (uname(&u) < 0)
 		return NULL;
 
-	if (asprintf(&p, "%s/%s", dirname_default_prefix, u.release) < 0)
+	if ((dirname_prefix = getenv("MODULE_DIR")) == NULL)
+		dirname_prefix = dirname_default_prefix;
+
+	if (asprintf(&p, "%s/%s", dirname_prefix, u.release) < 0)
 		return NULL;
 
 	return p;
