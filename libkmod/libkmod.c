@@ -207,7 +207,7 @@ static int log_priority(const char *priority)
 }
 
 static const char *dirname_default_prefixes[] = {
-	"/lib/modules",
+	MODULESDIRS,
 	NULL
 };
 

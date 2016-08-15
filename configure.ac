@@ -202,6 +202,12 @@ GTK_DOC_CHECK([1.14],[--flavour no-tmpl-flat])
 ], [
 AM_CONDITIONAL([ENABLE_GTK_DOC], false)])
 
+AC_ARG_WITH([modulesdirs],
+	AS_HELP_STRING([--with-modulesdirs=DIRS], [Kernel modules directories, separated by :]),
+	[],
+	[with_modulesdirs=/lib/modules])
+AC_SUBST([modulesdirs], [$with_modulesdirs])
+
 
 #####################################################################
 # Default CFLAGS and LDFLAGS
