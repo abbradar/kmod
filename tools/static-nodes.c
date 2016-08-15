@@ -29,9 +29,10 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/utsname.h>
 
 #include <shared/util.h>
+
+#include <libkmod/libkmod.h>
 
 #include "kmod.h"
 
@@ -154,8 +155,8 @@ static void help(void)
 
 static int do_static_nodes(int argc, char *argv[])
 {
-	struct utsname kernel;
 	char modules[PATH_MAX], buf[4096];
+	struct kmod_ctx *ctx;
 	const char *output = "/dev/stdout";
 	FILE *in = NULL, *out = NULL;
 	const struct static_nodes_format *format = &static_nodes_format_human;
@@ -206,22 +207,25 @@ static int do_static_nodes(int argc, char *argv[])
 		}
 	}
 
-	if (uname(&kernel) < 0) {
-		fputs("Error: uname failed!\n", stderr);
+	ctx = kmod_new(NULL, NULL);
+	if (ctx == NULL) {
+		fprintf(stderr, "Error: failed to create kmod context\n");
 		ret = EXIT_FAILURE;
 		goto finish;
 	}
-
-	snprintf(modules, sizeof(modules), "/lib/modules/%s/modules.devname", kernel.release);
+	if (snprintf(modules, sizeof(modules), "%s/modules.devname", kmod_get_dirname(ctx)) < 0) {
+		fprintf(stderr, "Error: path to modules.devname is too long\n");
+		ret = EXIT_FAILURE;
+		goto finish;
+	}
+	kmod_unref(ctx);
 	in = fopen(modules, "re");
 	if (in == NULL) {
 		if (errno == ENOENT) {
-			fprintf(stderr, "Warning: /lib/modules/%s/modules.devname not found - ignoring\n",
-				kernel.release);
+			fprintf(stderr, "Warning: %s not found - ignoring\n", modules);
 			ret = EXIT_SUCCESS;
 		} else {
-			fprintf(stderr, "Error: could not open /lib/modules/%s/modules.devname - %m\n",
-				kernel.release);
+			fprintf(stderr, "Error: could not open %s - %m\n", modules);
 			ret = EXIT_FAILURE;
 		}
 		goto finish;
